@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 import pickle  # Assuming you saved the preprocessor using pickle
+import subprocess
 
 # Load the trained model
 model = load_model('Models/hmeq_loan_approval_model.keras')  # Path to your saved model
@@ -48,6 +49,48 @@ def get_user_input():
     })
     return user_data
 
+
+
+
+
+# Function to generate personalized career guidance using OpenAI
+def get_llm_explanation(user_data, prediction):
+     # Prepare the prompt based on prediction
+    if prediction == 1:
+        outcome = "approved"
+    else:
+        outcome = "not approved"
+    
+    # Construct a descriptive prompt using user data
+    prompt = (
+        f"You are a financial advisor. "
+        f"My loan application was {outcome} based on the model's prediction.\n\n"
+        f"Loan Amount: {user_data['LOAN'].iloc[0]}\n"
+        f"Mortgage Due: {user_data['MORTDUE'].iloc[0]}\n"
+        f"Property Value: {user_data['VALUE'].iloc[0]}\n"
+        f"Reason for Loan: {user_data['REASON'].iloc[0]}\n"
+        f"Job Category: {user_data['JOB'].iloc[0]}\n"
+        f"Years at Present Job: {user_data['YOJ'].iloc[0]}\n"
+        f"Number of Major Derogatory Reports: {user_data['DEROG'].iloc[0]}\n"
+        f"Number of Delinquent Credit Lines: {user_data['DELINQ'].iloc[0]}\n"
+        f"Age of Oldest Credit Line (months): {user_data['CLAGE'].iloc[0]}\n"
+        f"Number of Recent Credit Inquiries: {user_data['NINQ'].iloc[0]}\n"
+        f"Number of Credit Lines: {user_data['CLNO'].iloc[0]}\n"
+        f"Debt-to-Income Ratio: {user_data['DEBTINC'].iloc[0]}\n\n"
+        f"Provide a clear and concise explanation for why my loan was {outcome}. Answer like you are talking to me."
+    )
+
+
+    result = subprocess.run(
+            ["ollama", "run", "mistral", prompt],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    explanation = result.stdout.strip()
+ 
+    return explanation
+
 # Function to make predictions
 def predict_approval(user_data):
     # Preprocess user input using the same preprocessor pipeline
@@ -75,11 +118,7 @@ def main():
     if st.button("Submit"):
         prediction = predict_approval(user_data)
         
-        # Explanation from Local LLM
-        if prediction == 1:
-            explanation = "Your loan was approved because your financial history and current standing align with our approval criteria."
-        else:
-            explanation = "Your loan was not approved due to certain criteria not being met, such as income, credit history, or other financial ratios."
+        explanation = get_llm_explanation(user_data, prediction);
         
         st.write("Explanation:", explanation)
 
